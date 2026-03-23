@@ -3,26 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flask Calculator</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <title>Calculator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <div class="calculator-container">
-        <h1>Arithmetic Expression Calculator</h1>
+    <div class="container">
+        <h1>Simple Calculator</h1>
         <form id="calculator-form">
-            <input
-                type="text"
-                id="expression-input"
-                placeholder="Enter expression (e.g., 2 + 2 * 3)"
-                required
-            >
-            <button type="submit">Calculate</button>
+            <input type="text" id="expression" placeholder="Enter expression (e.g., 2+2*3)" required />
+            <button type="submit" id="calculate-btn">Calculate</button>
+            <button type="button" id="clear-btn">Clear</button>
         </form>
-        <div id="loading-indicator" class="loading" style="display: none;">
-            <div class="spinner"></div>
+        <div id="result-container">
+            <div id="result"></div>
+            <div id="error" class="hidden"></div>
+            <div id="loading" class="hidden">
+                <div class="spinner"></div>
+            </div>
         </div>
-        <div id="result-display"></div>
     </div>
-    <script src="/static/js/calculator.js"></script>
+    <script src="{{ url_for('static', filename='js/calculator.js') }}"></script>
 </body>
 </html>

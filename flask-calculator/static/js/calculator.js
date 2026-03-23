@@ -1,125 +1,115 @@
-/**
- * Frontend logic for arithmetic expression calculator
- * Handles form submission, AJAX requests, and result display
- */
+class Calculator {
+  constructor() {
+    this.form        = document.getElementById('calculator-form');
+    this.expression  = document.getElementById('expression') || document.getElementById('expression-input');
+    this.display     = document.getElementById('display');
+    this.resultDiv   = document.getElementById('result') || document.getElementById('result-display');
+    this.errorDiv    = document.getElementById('error');
+    this.loadingDiv  = document.getElementById('loading') || document.getElementById('loading-indicator');
+    this.clearBtn    = document.getElementById('clear-btn');
 
-// Wait for DOM to be loaded
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('calculator-form');
-    const input = document.getElementById('expression-input');
-    const resultDisplay = document.getElementById('result-display');
-    const loadingIndicator = document.getElementById('loading-indicator');
+    if (this.display) this.bindOldUI();
+    else              this.bindNewUI();
 
-    /**
-     * Sends expression to backend for calculation
-     * @param {string} expression - The arithmetic expression to calculate
-     */
-    async function calculateExpression(expression) {
-        try {
-            const response = await fetch('/api/calculate', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ expression: expression.trim() })
-            });
+    if (this.clearBtn) this.clearBtn.addEventListener('click', () => this.clear());
+  }
 
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
+  bindOldUI() {
+    this.btnAppend = (v) => { this.display.value += v; };
+    window.appendToDisplay = (v) => { this.display.value += v; };
+    window.clearDisplay    = () => { this.display.value = ''; };
+    window.calculate       = () => this.handleLegacySubmit();
+  }
 
-            const data = await response.json();
-            return data;
-        } catch (error) {
-            console.error('Error:', error);
-            return { error: 'Failed to connect to server' };
-        }
+  bindNewUI() {
+    this.form?.addEventListener('submit', (e) => this.handleSubmit(e));
+    this.expression?.addEventListener('keyup', (e) => {
+      if (e.key === 'Enter') this.handleSubmit(e);
+    });
+  }
+
+  async handleLegacySubmit() {
+    const expression = this.display.value.trim();
+    if (!expression) return;
+
+    this.hideError();
+    this.showLoading(true);
+
+    try {
+      const data = await this.calculateExpression(expression);
+      this.display.value = data.result !== undefined ? data.result : '';
+      if (data.error) this.showError(data.error);
+    } catch (error) {
+      this.showError('Network error.');
+    } finally {
+      this.showLoading(false);
+    }
+  }
+
+  async handleSubmit(e) {
+    e?.preventDefault();
+    const expression = this.expression?.value.trim() || this.display?.value.trim();
+    if (!expression) {
+      this.showError('Please enter an expression');
+      return;
     }
 
-    /**
-     * Displays the result or error message
-     * @param {Object} data - Response data from server
-     * @param {number|string} [data.result] - The calculation result
-     * @param {string} [data.error] - Error message if calculation failed
-     */
-    function displayResult(data) {
-        resultDisplay.textContent = '';
-        resultDisplay.className = '';
+    this.showLoading(true);
+    this.hideError();
+    this.hideResult();
 
-        if (data.error) {
-            resultDisplay.textContent = data.error;
-            resultDisplay.classList.add('error');
-        } else {
-            resultDisplay.textContent = `Result: ${data.result}`;
-            resultDisplay.classList.add('success');
-        }
+    try {
+      const data = await this.calculateExpression(expression);
+      if (data.result !== undefined) this.showResult(data.result);
+      else this.showError(data.error || 'Calculation failed');
+    } catch (error) {
+      this.showError('Network error.');
+    } finally {
+      this.showLoading(false);
     }
+  }
 
-    /**
-     * Shows or hides the loading indicator
-     * @param {boolean} show - Whether to show the loading indicator
-     */
-    function setLoading(show) {
-        if (show) {
-            loadingIndicator.style.display = 'block';
-            resultDisplay.style.display = 'none';
-        } else {
-            loadingIndicator.style.display = 'none';
-            resultDisplay.style.display = 'block';
-        }
-    }
-
-    /**
-     * Validates input before submission
-     * @param {string} value - The input value to validate
-     * @returns {boolean} - Whether the input is valid
-     */
-    function validateInput(value) {
-        if (!value || value.trim().length === 0) {
-            displayResult({ error: 'Please enter an expression' });
-            return false;
-        }
-        return true;
-    }
-
-    // Handle form submission
-    form.addEventListener('submit', async function(e) {
-        e.preventDefault();
-
-        const expression = input.value;
-
-        // Clear previous results
-        resultDisplay.textContent = '';
-        resultDisplay.className = '';
-
-        // Validate input
-        if (!validateInput(expression)) {
-            return;
-        }
-
-        // Clear focus from input
-        input.blur();
-
-        // Show loading state
-        setLoading(true);
-
-        // Send to backend
-        const result = await calculateExpression(expression);
-
-        // Hide loading state
-        setLoading(false);
-
-        // Display result
-        displayResult(result);
+  async calculateExpression(expr) {
+    const response = await fetch('/api/calculate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ expression: expr })
     });
 
-    // Allow Enter key submission
-    input.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            form.dispatchEvent(new Event('submit'));
-        }
-    });
+    if (!response.ok) throw new Error('Bad response');
 
-    // Focus input on page load
-    input.focus();
-});
+    return response.json();
+  }
+
+  showResult(result) {
+    if (this.resultDiv) {
+      this.resultDiv.textContent = `Result: ${result}`;
+      this.resultDiv.classList.remove('hidden');
+    }
+  }
+
+  showError(message) {
+    if (this.errorDiv) {
+      this.errorDiv.textContent = message;
+      this.errorDiv.classList.remove('hidden');
+    }
+  }
+
+  hideResult()   { this.resultDiv?.classList?.add?.('hidden'); }
+  hideError()    { this.errorDiv?.classList?.add?.('hidden'); }
+
+  showLoading(show = true) {
+    if (!this.loadingDiv) return;
+    this.loadingDiv.classList.toggle('hidden', !show);
+  }
+
+  clear() {
+    if (this.expression) this.expression.value = '';
+    if (this.display)    this.display.value = '';
+    this.hideResult();
+    this.hideError();
+    this.expression?.focus();
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => new Calculator());
