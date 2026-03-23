@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.9-slim
 
 WORKDIR /app
 
@@ -9,7 +9,8 @@ COPY . .
 
 EXPOSE 5000
 
+ENV FLASK_APP=app.py
+ENV FLASK_ENV=development
 ENV PORT=5000
-ENV HOST=0.0.0.0
 
-CMD ["gunicorn", "app:app", "-b", "0.0.0.0:5000", "--workers", "1", "--threads", "8"]
+CMD ["python", "-m", "flask", "run", "--host=0.0.0.0"]
