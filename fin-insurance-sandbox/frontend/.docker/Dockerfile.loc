@@ -1,0 +1,16 @@
+# Custom Dockerfile to override host port binding
+FROM docker.io/library/node:18
+
+WORKDIR /app
+
+# Copy lock files if they exist
+COPY package*.json ./
+COPY yarn.lock* ./
+
+RUN npm ci --prefer-offline
+
+# Copy rest of frontend folder
+COPY . .
+
+# Default CMD - the container still listens internally on port 5173
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
