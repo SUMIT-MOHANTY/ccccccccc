@@ -1,51 +1,54 @@
-from flask import Flask, request, jsonify, render_template
-import math
+from flask import Flask, render_template, jsonify, request
 import logging
+import os
 
+# Configure logging
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-def safe_eval(expression):
-    """Safely evaluate mathematical expression"""
-    try:
-        # Only allow numbers and basic operators
-        allowed_chars = '0123456789+-*/(). '
-        if not all(c in allowed_chars for c in expression):
-            raise ValueError("Invalid characters")
+# Health check endpoint
+@app.route('/health')
+def health():
+    return jsonify({"status": "healthy", "port": os.getenv('PORT', 5000)})
 
-        # Check for dangerous expressions
-        dangerous = ['__', 'import', 'eval', 'exec']
-        if any(d in expression for d in dangerous):
-            raise ValueError("Invalid expression")
-
-        result = eval(expression)
-        return float(result)
-    except Exception as e:
-        logging.error(f"Calculation error: {str(e)}")
-        raise ValueError(str(e))
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
+# Calculator API endpoint
 @app.route('/api/calculate', methods=['POST'])
 def calculate():
     try:
         data = request.get_json()
-        expression = data.get('expression', '')
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
 
-        if not expression.strip():
-            return jsonify({'error': 'Empty expression'}), 400
+        operation = data.get('operation')
+        a = float(data.get('a', 0))
+        b = float(data.get('b', 0))
 
-        result = safe_eval(expression)
-        return jsonify({'result': result, 'success': True})
+        if operation not in ['add', 'subtract', 'multiply', 'divide']:
+            return jsonify({"error": "Invalid operation"}), 400
 
-    except ValueError as e:
-        return jsonify({'error': str(e)}), 400
+        if operation == 'add':
+            result = a + b
+        elif operation == 'subtract':
+            result = a - b
+        elif operation == 'multiply':
+            result = a * b
+        elif operation == 'divide':
+            if b == 0:
+                return jsonify({"error": "Division by zero"}), 400
+            result = a / b
+
+        return jsonify({"result": result})
     except Exception as e:
-        logging.error(f"Server error: {str(e)}")
-        return jsonify({'error': 'Internal server error'}), 500
+        logger.error(f"Calculation error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# Main UI route
+@app.route('/')
+def index():
+    return render_template('index.html')
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    port = int(os.getenv('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)

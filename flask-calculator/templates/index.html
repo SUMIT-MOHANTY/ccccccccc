@@ -1,26 +1,25 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculator</title>
+    <title>Flask Calculator</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <div class="container">
-        <h1>Simple Calculator</h1>
-        <form id="calculator-form">
-            <input type="text" id="expression" placeholder="Enter expression (e.g., 2+2*3)" required />
-            <button type="submit" id="calculate-btn">Calculate</button>
-            <button type="button" id="clear-btn">Clear</button>
-        </form>
-        <div id="result-container">
-            <div id="result"></div>
-            <div id="error" class="hidden"></div>
-            <div id="loading" class="hidden">
-                <div class="spinner"></div>
-            </div>
+    <div class="calculator">
+        <h1>Flask Calculator</h1>
+        <div class="display">
+            <input type="number" id="a" placeholder="First number" step="any">
+            <select id="operation">
+                <option value="add">+</option>
+                <option value="subtract">-</option>
+                <option value="multiply"></option>
+                <option value="divide"></option>
+            </select>
+            <input type="number" id="b" placeholder="Second number" step="any">
+            <button onclick="calculate()">=</button>
+            <input type="text" id="result" placeholder="Result" readonly>
         </div>
+        <div id="error" class="error"></div>
     </div>
     <script src="{{ url_for('static', filename='js/calculator.js') }}"></script>
 </body>
