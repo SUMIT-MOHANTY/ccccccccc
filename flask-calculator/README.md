@@ -1,13 +1,6 @@
-# Flask Calculator
+# Flask Calculator API
 
-A simple calculator web application built with Flask.
+A simple Flask-based calculator API with proper error handling and testing.
 
-## Setup Instructions
-
-### Prerequisites
-- Python 3.6 or higher
-
-### Installation
-
-1. Navigate to the project directory:
+## Setup
 echo 'Fix completed successfully'

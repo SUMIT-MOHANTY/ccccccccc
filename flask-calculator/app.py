@@ -1,66 +1,73 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, request, jsonify
 import logging
 import os
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler("flask_app.log")
+    ]
 )
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-@app.route('/')
-def index():
-    """Render the calculator interface."""
-    try:
-        logger.info("Loading calculator interface")
-        return render_template('index.html')
-    except Exception as e:
-        logger.error(f"Error rendering template: {str(e)}")
-        return "Error loading calculator. Please check server logs.", 500
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint to verify the app is running"""
+    logger.info("Health check endpoint called")
+    return jsonify({"status": "healthy"}), 200
 
-@app.route('/calculate', methods=['POST'])
-def calculate():
-    """Perform calculation based on input data."""
+@app.route('/add', methods=['POST'])
+def add():
+    """Addition endpoint"""
     try:
         data = request.get_json()
-        if not data:
-            logger.warning("No JSON data received")
-            return jsonify({"error": "No input provided"}), 400
+        if not data or 'a' not in data or 'b' not in data:
+            logger.warning("Invalid input: missing required fields")
+            return jsonify({"error": "Missing required fields 'a' and 'b'"}), 400
 
-        num1 = float(data.get('num1', 0))
-        num2 = float(data.get('num2', 0))
-        operation = data.get('operation', '+')
+        try:
+            a = float(data['a'])
+            b = float(data['b'])
+        except (ValueError, TypeError):
+            logger.warning("Invalid input: values must be numbers")
+            return jsonify({"error": "Values must be numbers"}), 400
 
-        logger.info(f"Calculating: {num1} {operation} {num2}")
-
-        result = None
-        if operation == '+':
-            result = num1 + num2
-        elif operation == '-':
-            result = num1 - num2
-        elif operation == '*':
-            result = num1 * num2
-        elif operation == '/':
-            if num2 == 0:
-                return jsonify({"error": "Division by zero"}), 400
-            result = num1 / num2
-        else:
-            return jsonify({"error": "Invalid operation"}), 400
-
+        result = a + b
+        logger.info(f"Addition: {a} + {b} = {result}")
         return jsonify({"result": result})
-    except ValueError as e:
-        logger.error(f"Value error: {str(e)}")
-        return jsonify({"error": "Invalid numbers provided"}), 400
     except Exception as e:
-        logger.error(f"Calculation error: {str(e)}")
-        return jsonify({"error": "Calculation failed"}), 500
+        logger.error(f"Unexpected error in add endpoint: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/subtract', methods=['POST'])
+def subtract():
+    """Subtraction endpoint"""
+    try:
+        data = request.get_json()
+        if not data or 'a' not in data or 'b' not in data:
+            logger.warning("Invalid input: missing required fields")
+            return jsonify({"error": "Missing required fields 'a' and 'b'"}), 400
+
+        try:
+            a = float(data['a'])
+            b = float(data['b'])
+        except (ValueError, TypeError):
+            logger.warning("Invalid input: values must be numbers")
+            return jsonify({"error": "Values must be numbers"}), 400
+
+        result = a - b
+        logger.info(f"Subtraction: {a} - {b} = {result}")
+        return jsonify({"result": result})
+    except Exception as e:
+        logger.error(f"Unexpected error in subtract endpoint: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    debug = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
-
     logger.info(f"Starting Flask application on port {port}")
-    app.run(host='0.0.0.0', port=port, debug=debug)
+    app.run(host='0.0.0.0', port=port, debug=True)
