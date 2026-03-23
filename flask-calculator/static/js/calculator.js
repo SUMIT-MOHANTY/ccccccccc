@@ -1,74 +1,99 @@
-/**
- * Frontend calculator logic for flask-calculator
- */
+class Calculator {
+    constructor() {
+        this.form = document.getElementById('calculator-form');
+        this.expressionInput = document.getElementById('expression');
+        this.resultDiv = document.getElementById('result');
+        this.errorDiv = document.getElementById('error');
+        this.loadingDiv = document.getElementById('loading');
+        this.clearBtn = document.getElementById('clear-btn');
 
-let displayValue = '';
-
-function updateDisplay() {
-    document.getElementById('display').value = displayValue || '0';
-}
-
-function clearDisplay() {
-    displayValue = '';
-    updateDisplay();
-}
-
-function appendToDisplay(value) {
-    displayValue += value;
-    updateDisplay();
-}
-
-function calculate() {
-    if (!displayValue) return;
-
-    // Clear error message
-    document.getElementById('error').textContent = '';
-
-    // Parse the expression
-    const operatorMatch = displayValue.match(/[+\-*/]/);
-    if (!operatorMatch) {
-        showError('Invalid expression');
-        return;
+        this.bindEvents();
     }
 
-    const operator = operatorMatch[0];
-    const parts = displayValue.split(operator);
-
-    if (parts.length !== 2) {
-        showError('Invalid expression');
-        return;
+    bindEvents() {
+        this.form.addEventListener('submit', (e) => this.handleSubmit(e));
+        this.clearBtn.addEventListener('click', () => this.clear());
+        this.expressionInput.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') {
+                this.handleSubmit(e);
+            }
+        });
     }
 
-    const a = parseFloat(parts[0]);
-    const b = parseFloat(parts[1]);
+    async handleSubmit(e) {
+        e.preventDefault();
 
-    if (isNaN(a) || isNaN(b)) {
-        showError('Invalid numbers');
-        return;
-    }
-
-    // Send to API
-    fetch('/api/calculate', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({a: a, b: b, op: operator})
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.error) {
-            showError(data.error);
-        } else {
-            displayValue = data.result.toString();
-            updateDisplay();
+        const expression = this.expressionInput.value.trim();
+        if (!expression) {
+            this.showError('Please enter an expression');
+            return;
         }
-    })
-    .catch(err => {
-        showError('Server error');
-    });
+
+        this.showLoading(true);
+        this.hideResult();
+        this.hideError();
+
+        try {
+            const response = await fetch('/api/calculate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ expression })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                this.showResult(data.result);
+            } else {
+                this.showError(data.error || 'Calculation failed');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            this.showError('Network error. Please check connection.');
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+    showResult(result) {
+        this.resultDiv.textContent = `Result: ${result}`;
+        this.resultDiv.classList.remove('hidden');
+    }
+
+    showError(message) {
+        this.errorDiv.textContent = message;
+        this.errorDiv.classList.remove('hidden');
+    }
+
+    hideResult() {
+        this.resultDiv.classList.add('hidden');
+        this.resultDiv.textContent = '';
+    }
+
+    hideError() {
+        this.errorDiv.classList.add('hidden');
+        this.errorDiv.textContent = '';
+    }
+
+    showLoading(show) {
+        if (show) {
+            this.loadingDiv.classList.remove('hidden');
+        } else {
+            this.loadingDiv.classList.add('hidden');
+        }
+    }
+
+    clear() {
+        this.expressionInput.value = '';
+        this.hideResult();
+        this.hideError();
+        this.expressionInput.focus();
+    }
 }
 
-function showError(message) {
-    document.getElementById('error').textContent = message;
-}
+// Initialize when DOM loads
+document.addEventListener('DOMContentLoaded', () => {
+    new Calculator();
+});
