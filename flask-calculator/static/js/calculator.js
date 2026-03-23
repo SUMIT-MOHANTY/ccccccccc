@@ -1,74 +1,115 @@
-/**
- * Frontend calculator logic for flask-calculator
- */
+class Calculator {
+  constructor() {
+    this.form        = document.getElementById('calculator-form');
+    this.expression  = document.getElementById('expression') || document.getElementById('expression-input');
+    this.display     = document.getElementById('display');
+    this.resultDiv   = document.getElementById('result') || document.getElementById('result-display');
+    this.errorDiv    = document.getElementById('error');
+    this.loadingDiv  = document.getElementById('loading') || document.getElementById('loading-indicator');
+    this.clearBtn    = document.getElementById('clear-btn');
 
-let displayValue = '';
+    if (this.display) this.bindOldUI();
+    else              this.bindNewUI();
 
-function updateDisplay() {
-    document.getElementById('display').value = displayValue || '0';
-}
+    if (this.clearBtn) this.clearBtn.addEventListener('click', () => this.clear());
+  }
 
-function clearDisplay() {
-    displayValue = '';
-    updateDisplay();
-}
+  bindOldUI() {
+    this.btnAppend = (v) => { this.display.value += v; };
+    window.appendToDisplay = (v) => { this.display.value += v; };
+    window.clearDisplay    = () => { this.display.value = ''; };
+    window.calculate       = () => this.handleLegacySubmit();
+  }
 
-function appendToDisplay(value) {
-    displayValue += value;
-    updateDisplay();
-}
-
-function calculate() {
-    if (!displayValue) return;
-
-    // Clear error message
-    document.getElementById('error').textContent = '';
-
-    // Parse the expression
-    const operatorMatch = displayValue.match(/[+\-*/]/);
-    if (!operatorMatch) {
-        showError('Invalid expression');
-        return;
-    }
-
-    const operator = operatorMatch[0];
-    const parts = displayValue.split(operator);
-
-    if (parts.length !== 2) {
-        showError('Invalid expression');
-        return;
-    }
-
-    const a = parseFloat(parts[0]);
-    const b = parseFloat(parts[1]);
-
-    if (isNaN(a) || isNaN(b)) {
-        showError('Invalid numbers');
-        return;
-    }
-
-    // Send to API
-    fetch('/api/calculate', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({a: a, b: b, op: operator})
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.error) {
-            showError(data.error);
-        } else {
-            displayValue = data.result.toString();
-            updateDisplay();
-        }
-    })
-    .catch(err => {
-        showError('Server error');
+  bindNewUI() {
+    this.form?.addEventListener('submit', (e) => this.handleSubmit(e));
+    this.expression?.addEventListener('keyup', (e) => {
+      if (e.key === 'Enter') this.handleSubmit(e);
     });
+  }
+
+  async handleLegacySubmit() {
+    const expression = this.display.value.trim();
+    if (!expression) return;
+
+    this.hideError();
+    this.showLoading(true);
+
+    try {
+      const data = await this.calculateExpression(expression);
+      this.display.value = data.result !== undefined ? data.result : '';
+      if (data.error) this.showError(data.error);
+    } catch (error) {
+      this.showError('Network error.');
+    } finally {
+      this.showLoading(false);
+    }
+  }
+
+  async handleSubmit(e) {
+    e?.preventDefault();
+    const expression = this.expression?.value.trim() || this.display?.value.trim();
+    if (!expression) {
+      this.showError('Please enter an expression');
+      return;
+    }
+
+    this.showLoading(true);
+    this.hideError();
+    this.hideResult();
+
+    try {
+      const data = await this.calculateExpression(expression);
+      if (data.result !== undefined) this.showResult(data.result);
+      else this.showError(data.error || 'Calculation failed');
+    } catch (error) {
+      this.showError('Network error.');
+    } finally {
+      this.showLoading(false);
+    }
+  }
+
+  async calculateExpression(expr) {
+    const response = await fetch('/api/calculate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ expression: expr })
+    });
+
+    if (!response.ok) throw new Error('Bad response');
+
+    return response.json();
+  }
+
+  showResult(result) {
+    if (this.resultDiv) {
+      this.resultDiv.textContent = `Result: ${result}`;
+      this.resultDiv.classList.remove('hidden');
+    }
+  }
+
+  showError(message) {
+    if (this.errorDiv) {
+      this.errorDiv.textContent = message;
+      this.errorDiv.classList.remove('hidden');
+    }
+  }
+
+  hideResult()   { this.resultDiv?.classList?.add?.('hidden'); }
+  hideError()    { this.errorDiv?.classList?.add?.('hidden'); }
+
+  showLoading(show = true) {
+    if (!this.loadingDiv) return;
+    this.loadingDiv.classList.toggle('hidden', !show);
+  }
+
+  clear() {
+    if (this.expression) this.expression.value = '';
+    if (this.display)    this.display.value = '';
+    this.hideResult();
+    this.hideError();
+    this.expression?.focus();
+  }
 }
 
-function showError(message) {
-    document.getElementById('error').textContent = message;
-}
+document.addEventListener('DOMContentLoaded', () => new Calculator());
